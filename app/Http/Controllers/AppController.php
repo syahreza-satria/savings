@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bill;
+use App\Models\User;
 use App\Models\Saving;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class AppController extends Controller
 {
@@ -15,15 +17,51 @@ class AppController extends Controller
     {
         $userId = auth()->id();
         $bills = Bill::where('user_id', $userId)->where('is_paid', false)->orderBy('id', 'desc')->take(5)->get();
-        $savings = Saving::where('user_id', $userId)->orderBy('id', 'desc')->paginate(3);
+        $savings = Saving::where('user_id', $userId)->where('status', false)->orderBy('id', 'desc')->paginate(3);
         return view('index', compact('bills', 'savings'));
     }
+
+    public function getChartData()
+    {
+        $user = auth()->user();
+
+        // Data Hutang per bulan (aktif dan lunas)
+        $monthlyDebts = Bill::where('user_id', $user->id)
+            ->selectRaw('MONTH(created_at) as month,
+                        SUM(CASE WHEN is_paid = 0 THEN amount ELSE 0 END) as active_debt,
+                        SUM(CASE WHEN is_paid = 1 THEN amount ELSE 0 END) as paid_debt')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Format data untuk chart hutang
+        $debtData = [
+            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+            'active' => array_fill(0, 12, 0),
+            'paid' => array_fill(0, 12, 0)
+        ];
+
+        foreach ($monthlyDebts as $debt) {
+            $monthIndex = $debt->month - 1;
+            $debtData['active'][$monthIndex] = $debt->active_debt;
+            $debtData['paid'][$monthIndex] = $debt->paid_debt;
+        }
+
+        // Data Tabungan
+        $savings = Saving::where('user_id', $user->id)->get();
+
+        return response()->json([
+            'debt' => $debtData,
+            'savings' => $savings
+        ]);
+    }
+
 
     public function bills()
     {
         $userId = auth()->id();
         $bills = Bill::where('user_id', $userId)->where('is_paid', false)->orderBy('id', 'desc')->paginate(8);
-        $paids = Bill::where('is_paid', true)->orderBy('id', 'desc')->paginate(8);
+        $paids = Bill::where('user_id', $userId)->where('is_paid', true)->orderBy('id', 'desc')->paginate(8);
 
         return view('bills', compact('bills', 'paids'));
     }
@@ -59,16 +97,20 @@ class AppController extends Controller
             'item' => 'required|string|max:255',
             'amount' => 'required|string',
             'description' => 'nullable|string|max:500',
+            'is_paid' => 'required|boolean'
         ]);
 
         // Konversi format Rupiah ke numerik
         $numericAmount = (int) preg_replace('/[^0-9]/', '', $validated['amount']);
 
         // Update data
-        $bill->item = $validated['item'];
-        $bill->amount = $numericAmount;
-        $bill->description = $validated['description'];
-        $bill->save();
+        $bill->update([
+            'item' => $validated['item'],
+            'amount' => $numericAmount,
+            'description' => $validated['description'],
+            'is_paid' => $validated['is_paid'],
+            'updated_at' => $validated['is_paid'] ? now() : $bill->updated_at
+        ]);
 
         // Redirect dengan pesan sukses
         return redirect()->route('bills')->with('success', 'Hutang berhasil diperbarui!');
@@ -87,9 +129,25 @@ class AppController extends Controller
         return redirect()->back()->with('error', 'Maaf dosa kamu perlu dilihat lagi oleh developernya yah!');
     }
 
+    public function bill_destroy(Bill $bill)
+    {
+        try {
+            if ($bill->user_id !== auth()->id()) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus hutang ini.');
+            }
+
+            $bill->delete();
+
+            return redirect()->route('bills')->with('success', 'Hutang berhasil dihapus!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus hutang: ' . $e->getMessage());
+        }
+    }
+
     public function savings()
     {
-        $savings = Saving::where('user_id', auth()->id())->orderBy('id', 'desc')->paginate(10);
+        $userId = Auth::user()->id;
+        $savings = Saving::where('user_id', $userId)->orderBy('id', 'desc')->paginate(10);
         return view('savings', compact('savings'));
     }
 
@@ -116,6 +174,12 @@ class AppController extends Controller
         $saving->description = $validated['description'] ?? null;
         $saving->status = false; // Default false karena baru dibuat
         $saving->save();
+
+        // Pengecekan status (meskipun baru dibuat, mungkin saja langsung memenuhi target)
+        if ($saving->saving >= $saving->target) {
+            $saving->status = true;
+            $saving->save();
+        }
 
         // Redirect dengan pesan sukses
         return redirect()->back()->with('success', 'Tabungan berhasil dibuat!');
@@ -152,6 +216,14 @@ class AppController extends Controller
 
         $saving->save();
 
+        // Cek jika status berubah dari false ke true
+        if ($saving->wasChanged('status') && $saving->status) {
+            return redirect()->back()->with([
+                'success' => 'Tabungan berhasil diperbarui!',
+                'congrats' => 'Selamat! Tabungan "' . $saving->name . '" telah mencapai target! 🎉'
+            ]);
+        }
+
         // Redirect dengan pesan sukses
         return redirect()->back()->with('success', 'Tabungan berhasil diperbarui!');
     }
@@ -178,6 +250,14 @@ class AppController extends Controller
         // Update status jika target tercapai
         if ($saving->saving >= $saving->target) {
             $saving->update(['status' => true]);
+        }
+
+        // Cek jika status berubah
+        if ($saving->wasChanged('status') && $saving->status) {
+            return redirect()->back()->with([
+                'success' => 'Deposit berhasil ditambahkan!',
+                'congrats' => 'Selamat! Tabungan "' . $saving->name . '" telah mencapai target! 🎉'
+            ]);
         }
 
         return redirect()->back()->with('success', 'Deposit berhasil ditambahkan!');
@@ -239,5 +319,55 @@ class AppController extends Controller
 
         return redirect()->route('savings')
             ->with('success', 'Celengan "'.$saving->name.'" berhasil dihapus');
+    }
+
+    public function getStatus(Saving $saving)
+    {
+        return response()->json([
+            'saving' => $saving->saving,
+            'target' => $saving->target
+        ]);
+    }
+
+
+    public function setting()
+    {
+        $user = auth()->user();
+        return view('settings', compact('user'));
+    }
+
+    public function profile_update(Request $request)
+    {
+        $user = User::find(auth()->id());
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'nullable|string|max:255|unique:users,username,'.$user->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'gender' => 'nullable|in:M,F',
+            'birthdate' => 'nullable|date',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3000',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            // Hapus foto lama jika ada
+            if ($user->photo) {
+                Storage::delete('public/'.$user->photo);
+            }
+
+            // Simpan foto baru
+            $photoPath = $request->file('photo')
+                ->store('profile-photos', 'public');
+            $validated['photo'] = $photoPath;
+        }
+
+        // Update data user
+        foreach ($validated as $key => $value) {
+            $user->$key = $value;
+        }
+        $user->save();
+
+        return redirect()->route('setting')
+            ->with('success', 'Profil berhasil diperbarui');
     }
 }

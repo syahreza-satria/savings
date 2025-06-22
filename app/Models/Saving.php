@@ -27,6 +27,16 @@ class Saving extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function checkStatus()
+    {
+        if ($this->saving >= $this->target) {
+            $this->status = true;
+            $this->save();
+            return true;
+        }
+        return false;
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class, 'saving_id');
