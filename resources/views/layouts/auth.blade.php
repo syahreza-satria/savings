@@ -9,8 +9,27 @@
     @vite('resources/css/app.css')
 </head>
 
-<body class="bg-gray-100">
+<body class="max-h-screen p-8 lg:p-0 font-primary">
     @yield('content')
+
+    <script>
+        function togglePassword(fieldId, eyeIconId, eyeSlashIconId) {
+            const passwordField = document.getElementById(fieldId);
+            const eyeIcon = document.getElementById(eyeIconId);
+            const eyeSlashIcon = document.getElementById(eyeSlashIconId);
+
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                eyeIcon.classList.add('hidden');
+                eyeSlashIcon.classList.remove('hidden');
+            } else {
+                passwordField.type = 'password';
+                eyeIcon.classList.remove('hidden');
+                eyeSlashIcon.classList.add('hidden');
+            }
+        }
+    </script>
+
 </body>
 
 </html>
