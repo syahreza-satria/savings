@@ -52,7 +52,7 @@
                     <span class="px-3 text-sm text-gray-500">Atau</span>
                     <hr class="flex-grow border-t border-gray-300">
                 </div>
-                <a href="#"
+                <a href="{{ route('redirect.google') }}"
                     class="flex items-center justify-center w-full px-4 py-2 space-x-3 transition duration-500 border rounded-lg bg-indigo-50 hover:bg-white">
                     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"
                         xmlns:xlink="http://www.w3.org/1999/xlink" style="display: block;" class="size-6">

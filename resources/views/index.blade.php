@@ -1,6 +1,29 @@
 @extends('layouts.app')
 
 @section('content')
+    <!-- Notifikasi dengan gradient dark mode -->
+    <div x-data="{ showNotification: false, message: '', isSuccess: false }" x-init="@if (session('success')) showNotification=true; message='{{ session('success') }}'; isSuccess=true; setTimeout(()=>showNotification=false, 3000); @endif
+    @if (session('error')) showNotification=true; message='{{ session('error') }}'; isSuccess=false; setTimeout(()=>showNotification=false, 3000); @endif" class="fixed inset-x-0 z-50 flex justify-center top-4">
+        <div x-show="showNotification" x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-2"
+            :class="isSuccess ?
+                'bg-green-50 border border-green-200 text-green-700 dark:bg-gradient-to-br dark:from-green-900 dark:to-green-800 dark:border-green-700 dark:text-green-100' :
+                'bg-red-50 border border-red-200 text-red-700 dark:bg-gradient-to-br dark:from-red-900 dark:to-red-800 dark:border-red-700 dark:text-red-100'"
+            class="w-full max-w-4xl px-4 py-2.5 mx-4 rounded-lg shadow-sm text-sm font-medium">
+            <div class="flex items-center justify-between">
+                <span x-text="message"></span>
+                <button @click="showNotification = false" class="ml-3 text-current hover:opacity-75">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="space-y-6">
         <!-- Stats Overview -->
         <div class="grid grid-cols-1 gap-6 md:grid-cols-3">

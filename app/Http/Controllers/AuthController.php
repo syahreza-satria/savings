@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -105,5 +106,26 @@ class AuthController extends Controller
             DB::rollBack();
             return back()->with('error', 'Failed to delete user: ' . $e->getMessage());
         }
+    }
+
+     public function googleRedirect()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function googleCallback()
+    {
+        $googleUser = Socialite::driver('google')->user();
+        // dd($googleUser);
+        $user = User::whereEmail($googleUser->email)->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => $googleUser->name,
+                'email' => $googleUser->email,
+            ]);
+        }
+        Auth::login($user);
+
+        return redirect()->route('app')->with('success', 'Selamat kamu telah berhasil mendaftarkan diri kamu!');
     }
 }

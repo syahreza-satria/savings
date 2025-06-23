@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GoogleController;
 use App\Http\Controllers\DarkModeController;
 
 /*
@@ -17,9 +18,14 @@ use App\Http\Controllers\DarkModeController;
 */
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::get('/auth-google-redirect', [AuthController::class, 'googleRedirect'])->name('redirect.google');
+Route::get('/auth-google-callback', [AuthController::class, 'googleCallback'])->name('callback.google');
 
 Route::middleware(['auth'])->group(function(){
     Route::get('/', [AppController::class, 'index'])->name('app');
