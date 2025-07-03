@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    <!-- Notifikasi dengan gradient dark mode -->
     <div x-data="{ showNotification: false, message: '', isSuccess: false }" x-init="@if (session('success')) showNotification=true; message='{{ session('success') }}'; isSuccess=true; setTimeout(()=>showNotification=false, 3000); @endif
     @if (session('error')) showNotification=true; message='{{ session('error') }}'; isSuccess=false; setTimeout(()=>showNotification=false, 3000); @endif" class="fixed inset-x-0 z-50 flex justify-center top-4">
         <div x-show="showNotification" x-transition:enter="transition ease-out duration-200"
@@ -25,8 +24,16 @@
         </div>
     </div>
 
+    <div class="mb-8">
+        <section class="p-4 bg-white border border-gray-100 rounded-lg shadow dark:border-gray-700 dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
+            <h2 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">Perbandingan Hutang</h2>
+            <div class="flex justify-center h-64">
+                <canvas id="billsChart"></canvas>
+            </div>
+        </section>
+    </div>
+
     <div class="mb-8 space-y-6 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
-        <!-- Hutang Belum Lunas dengan gradient dark mode -->
         <div class="space-y-3">
             <section
                 class="flex flex-col gap-2 overflow-hidden bg-white border border-gray-100 rounded-lg shadow dark:border-gray-700 dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
@@ -119,7 +126,6 @@
             </section>
         </div>
 
-        <!-- Hutang Lunas dengan gradient dark mode -->
         <div class="space-y-3">
             <section
                 class="flex flex-col gap-2 overflow-hidden bg-white border border-gray-100 rounded-lg shadow dark:border-gray-700 dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
@@ -203,7 +209,6 @@
         </div>
     </div>
 
-    <!-- Modal Tambah Hutang dengan dark mode -->
     <div id="storeModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
@@ -259,7 +264,6 @@
         </div>
     </div>
 
-    <!-- Modal Edit Hutang dengan dark mode -->
     <div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
@@ -332,117 +336,193 @@
         </div>
     </div>
 
-    <script>
-        // Fungsi untuk membuka modal
-        function openModal(type, id = null, item = null, amount = null, description = null, is_paid = null) {
-            if (type === 'store') {
-                document.getElementById('storeModal').classList.remove('hidden');
-                document.getElementById('store_item').value = '';
-                document.getElementById('store_amount').value = '';
-                document.getElementById('store_description').value = '';
-            } else if (type === 'edit') {
-                document.getElementById('editModal').classList.remove('hidden');
-                document.getElementById('edit_item').value = item;
-                document.getElementById('edit_amount').value = formatRupiah(amount);
-                document.getElementById('edit_description').value = description || '';
-                document.getElementById('edit_payment').checked = Boolean(is_paid);
-                document.getElementById('editForm').action = `/bills/${id}`;
+    @push('scripts')
+        <script>
+            // Chart.js script
+           document.addEventListener('DOMContentLoaded', function() {
+                const ctx = document.getElementById('billsChart').getContext('2d');
 
-                // Set delete form action
-                const deleteForm = document.createElement('form');
-                deleteForm.id = 'deleteForm';
-                deleteForm.method = 'POST';
-                deleteForm.action = `/bills/${id}`;
-                deleteForm.innerHTML = `
-                    @csrf
-                    @method('DELETE')
-                `;
-                document.getElementById('editModal').appendChild(deleteForm);
-            }
-            document.body.classList.add('overflow-hidden');
-        }
+                // Mengambil data dinamis yang dikirim dari controller
+                const labels = @json($chartLabels);
+                const dataLunasBulanan = @json($chartPaidData);
+                const dataBelumLunasBulanan = @json($chartUnpaidData);
 
-        // Fungsi untuk menutup modal
-        function closeModal() {
-            document.getElementById('storeModal').classList.add('hidden');
-            document.getElementById('editModal').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }
+                // Variabel untuk warna dinamis berdasarkan dark mode
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                const textColor = isDarkMode ? '#e5e7eb' : '#374151'; // Warna teks (putih keabu-abuan / abu-abu tua)
+                const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'; // Warna garis grid
 
-        // Fungsi untuk konfirmasi hapus
-        function confirmDelete() {
-            if (confirm('Apakah Anda yakin ingin menghapus hutang ini?')) {
-                document.getElementById('deleteForm').submit();
-            }
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const storeModal = document.getElementById('storeModal');
-            const editModal = document.getElementById('editModal');
-            if (event.target === storeModal || event.target === editModal) {
-                closeModal();
-            }
-        }
-
-        // Format Rupiah untuk input amount
-        function setupRupiahInput(inputId) {
-            const input = document.getElementById(inputId);
-            if (input) {
-                input.addEventListener('input', function(e) {
-                    let value = this.value.replace(/[^0-9]/g, '');
-                    if (value.length > 0) {
-                        value = parseInt(value, 10);
-                        this.value = formatRupiah(value);
-                    } else {
-                        this.value = '';
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Sudah Lunas',
+                            data: dataLunasBulanan,
+                            borderColor: 'rgba(34, 197, 94, 1)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                            fill: false,
+                            tension: 0.1
+                        }, {
+                            label: 'Belum Lunas',
+                            data: dataBelumLunasBulanan,
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                            fill: false,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: textColor // Menggunakan variabel warna
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                        },
+                        // Perubahan utama ada di sini
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: textColor // Warna angka pada sumbu Y
+                                },
+                                grid: {
+                                    color: gridColor // Warna garis grid pada sumbu Y
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: textColor // Warna label pada sumbu X (misal: Jan, Feb)
+                                },
+                                grid: {
+                                    color: gridColor // Warna garis grid pada sumbu X
+                                }
+                            }
+                        }
                     }
                 });
+            });
+
+
+            // Fungsi untuk membuka modal
+            function openModal(type, id = null, item = null, amount = null, description = null, is_paid = null) {
+                if (type === 'store') {
+                    document.getElementById('storeModal').classList.remove('hidden');
+                    document.getElementById('store_item').value = '';
+                    document.getElementById('store_amount').value = '';
+                    document.getElementById('store_description').value = '';
+                } else if (type === 'edit') {
+                    document.getElementById('editModal').classList.remove('hidden');
+                    document.getElementById('edit_item').value = item;
+                    document.getElementById('edit_amount').value = formatRupiah(amount);
+                    document.getElementById('edit_description').value = description || '';
+                    document.getElementById('edit_payment').checked = Boolean(is_paid);
+                    document.getElementById('editForm').action = `/bills/${id}`;
+
+                    // Set delete form action
+                    const deleteForm = document.createElement('form');
+                    deleteForm.id = 'deleteForm';
+                    deleteForm.method = 'POST';
+                    deleteForm.action = `/bills/${id}`;
+                    deleteForm.innerHTML = `
+                        @csrf
+                        @method('DELETE')
+                    `;
+                    document.getElementById('editModal').appendChild(deleteForm);
+                }
+                document.body.classList.add('overflow-hidden');
             }
-        }
 
-        // Format angka ke Rupiah
-        function formatRupiah(angka) {
-            if (!angka) return '';
-            let number_string = angka.toString();
-            let sisa = number_string.length % 3;
-            let rupiah = number_string.substr(0, sisa);
-            let ribuan = number_string.substr(sisa).match(/\d{3}/g);
-
-            if (ribuan) {
-                let separator = sisa ? '.' : '';
-                rupiah += separator + ribuan.join('.');
+            // Fungsi untuk menutup modal
+            function closeModal() {
+                document.getElementById('storeModal').classList.add('hidden');
+                document.getElementById('editModal').classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
             }
-            return 'Rp ' + rupiah;
-        }
 
-        // Konversi Rupiah ke numerik sebelum submit
-        function setupFormSubmission(formId, amountInputId) {
-            const form = document.getElementById(formId);
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    const amountInput = document.getElementById(amountInputId);
-                    const numericValue = amountInput.value.replace(/[^0-9]/g, '');
-
-                    // Buat input sementara untuk nilai numerik
-                    const tempInput = document.createElement('input');
-                    tempInput.type = 'hidden';
-                    tempInput.name = 'amount';
-                    tempInput.value = numericValue;
-                    this.appendChild(tempInput);
-
-                    // Set nilai asli ke format numerik
-                    amountInput.value = numericValue;
-                });
+            // Fungsi untuk konfirmasi hapus
+            function confirmDelete() {
+                if (confirm('Apakah Anda yakin ingin menghapus hutang ini?')) {
+                    document.getElementById('deleteForm').submit();
+                }
             }
-        }
 
-        // Inisialisasi saat DOM siap
-        document.addEventListener('DOMContentLoaded', function() {
-            setupRupiahInput('store_amount');
-            setupRupiahInput('edit_amount');
-            setupFormSubmission('storeForm', 'store_amount');
-            setupFormSubmission('editForm', 'edit_amount');
-        });
-    </script>
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                const storeModal = document.getElementById('storeModal');
+                const editModal = document.getElementById('editModal');
+                if (event.target === storeModal || event.target === editModal) {
+                    closeModal();
+                }
+            }
+
+            // Format Rupiah untuk input amount
+            function setupRupiahInput(inputId) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function(e) {
+                        let value = this.value.replace(/[^0-9]/g, '');
+                        if (value.length > 0) {
+                            value = parseInt(value, 10);
+                            this.value = formatRupiah(value);
+                        } else {
+                            this.value = '';
+                        }
+                    });
+                }
+            }
+
+            // Format angka ke Rupiah
+            function formatRupiah(angka) {
+                if (!angka) return '';
+                let number_string = angka.toString();
+                let sisa = number_string.length % 3;
+                let rupiah = number_string.substr(0, sisa);
+                let ribuan = number_string.substr(sisa).match(/\d{3}/g);
+
+                if (ribuan) {
+                    let separator = sisa ? '.' : '';
+                    rupiah += separator + ribuan.join('.');
+                }
+                return 'Rp ' + rupiah;
+            }
+
+            // Konversi Rupiah ke numerik sebelum submit
+            function setupFormSubmission(formId, amountInputId) {
+                const form = document.getElementById(formId);
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        const amountInput = document.getElementById(amountInputId);
+                        const numericValue = amountInput.value.replace(/[^0-9]/g, '');
+
+                        // Buat input sementara untuk nilai numerik
+                        const tempInput = document.createElement('input');
+                        tempInput.type = 'hidden';
+                        tempInput.name = 'amount';
+                        tempInput.value = numericValue;
+                        this.appendChild(tempInput);
+
+                        // Set nilai asli ke format numerik
+                        amountInput.value = numericValue;
+                    });
+                }
+            }
+
+            // Inisialisasi saat DOM siap
+            document.addEventListener('DOMContentLoaded', function() {
+                setupRupiahInput('store_amount');
+                setupRupiahInput('edit_amount');
+                setupFormSubmission('storeForm', 'store_amount');
+                setupFormSubmission('editForm', 'edit_amount');
+            });
+        </script>
+    @endpush
 @endsection

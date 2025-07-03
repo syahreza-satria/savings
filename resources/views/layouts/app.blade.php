@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{{ config('app.name') }}</title>
-    @vite('resources/css/app.css')
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,12 +58,14 @@
 </head>
 
 <body
-    class="min-h-screen text-gray-900 transition-colors duration-200 bg-gray-100 font-primary dark:text-gray-100 dark:bg-gray-800">
+    class="min-h-screen text-gray-900 transition-colors duration-200 bg-gray-100 font-primary dark:text-gray-100 dark:bg-gray-800 ">
     @include('includes.navbar')
 
     <main class="flex flex-col max-w-4xl gap-4 pb-8 mx-4 lg:mx-auto">
         @yield('content')
     </main>
+
+    @stack('scripts')
 </body>
 
 </html>

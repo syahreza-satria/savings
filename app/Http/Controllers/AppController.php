@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bill;
 use App\Models\User;
 use App\Models\Saving;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -56,15 +57,83 @@ class AppController extends Controller
         ]);
     }
 
-
     public function bills()
     {
         $userId = auth()->id();
-        $bills = Bill::where('user_id', $userId)->where('is_paid', false)->orderBy('id', 'desc')->paginate(8);
-        $paids = Bill::where('user_id', $userId)->where('is_paid', true)->orderBy('id', 'desc')->paginate(8);
 
-        return view('bills', compact('bills', 'paids'));
+        // 1. DATA UNTUK MENAMPILKAN LIST (Ini tetap sama)
+        $bills = Bill::where('user_id', $userId)
+                    ->where('is_paid', false)
+                    ->orderBy('id', 'desc')
+                    ->paginate(8, ['*'], 'bills_page'); // Menambahkan nama untuk paginasi
+
+        $paids = Bill::where('user_id', $userId)
+                    ->where('is_paid', true)
+                    ->orderBy('id', 'desc')
+                    ->paginate(8, ['*'], 'paids_page'); // Menambahkan nama untuk paginasi
+
+
+        // 2. DATA BARU UNTUK LINE CHART (Logika baru ditambahkan di sini)
+        $months = [];
+        $paidData = [];
+        $unpaidData = [];
+
+        // Siapkan label 12 bulan terakhir untuk sumbu-X pada grafik
+        for ($i = 11; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $months[] = $month->format('M Y'); // Format: Jan 2025
+            $paidData[$month->format('Y-m')] = 0; // Inisialisasi data dengan 0
+            $unpaidData[$month->format('Y-m')] = 0; // Inisialisasi data dengan 0
+        }
+
+        // Ambil data LUNAS yang dikelompokkan per bulan selama 12 bulan terakhir
+        $monthlyPaid = Bill::where('user_id', $userId)
+            ->where('is_paid', true)
+            ->where('updated_at', '>=', Carbon::now()->subMonths(12))
+            ->select(
+                DB::raw('SUM(amount) as total'),
+                DB::raw("DATE_FORMAT(updated_at, '%Y-%m') as month_year")
+            )
+            ->groupBy('month_year')
+            ->get()
+            ->pluck('total', 'month_year');
+
+        // Ambil data BELUM LUNAS yang dikelompokkan per bulan selama 12 bulan terakhir
+        $monthlyUnpaid = Bill::where('user_id', $userId)
+            ->where('is_paid', false)
+            ->where('created_at', '>=', Carbon::now()->subMonths(12)) // Asumsi menggunakan tanggal pembuatan
+            ->select(
+                DB::raw('SUM(amount) as total'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month_year")
+            )
+            ->groupBy('month_year')
+            ->get()
+            ->pluck('total', 'month_year');
+
+        // Masukkan data dari database ke array yang sudah disiapkan
+        foreach ($monthlyPaid as $monthYear => $total) {
+            if (isset($paidData[$monthYear])) {
+                $paidData[$monthYear] = $total;
+            }
+        }
+
+        foreach ($monthlyUnpaid as $monthYear => $total) {
+            if (isset($unpaidData[$monthYear])) {
+                $unpaidData[$monthYear] = $total;
+            }
+        }
+
+
+        // 3. KIRIM SEMUA DATA KE VIEW
+        return view('bills', [
+            'bills' => $bills,
+            'paids' => $paids,
+            'chartLabels' => array_values($months), // Kirim label bulan
+            'chartPaidData' => array_values($paidData), // Kirim data lunas
+            'chartUnpaidData' => array_values($unpaidData) // Kirim data belum lunas
+        ]);
     }
+
 
     public function bill_store(Request $request)
     {
