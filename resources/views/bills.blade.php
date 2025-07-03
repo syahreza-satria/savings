@@ -339,7 +339,7 @@
     @push('scripts')
         <script>
             // Chart.js script
-           document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function() {
                 const ctx = document.getElementById('billsChart').getContext('2d');
 
                 // Mengambil data dinamis yang dikirim dari controller
