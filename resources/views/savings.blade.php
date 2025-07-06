@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="container max-w-6xl px-4 py-8 mx-auto">
+    <div class="container">
         <!-- Header Section -->
-        <div class="flex flex-col mb-10 md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-col mb-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 min-w-0">
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-indigo-400">Celengan Kamu</h1>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">Kelola celengan dan raih impian finansialmu</p>
@@ -461,154 +461,161 @@
 
     @push('scripts')
         <script>
-            // Format Rupiah functions
-            function formatRupiah(value, prefix = '') {
-                if (!value) return '';
+            /**
+             * @module rupiahFormatter
+             * Kumpulan fungsi untuk memformat dan mengurai format mata uang Rupiah.
+             */
+            const rupiahFormatter = {
+                /**
+                 * Mengubah angka menjadi format string Rupiah (e.g., "Rp 1.000.000").
+                 * @param {string|number} value - Nilai yang akan diformat.
+                 * @param {string} [prefix='Rp '] - Prefix yang akan ditambahkan.
+                 * @returns {string} - String yang sudah diformat.
+                 */
+                format: (value, prefix = 'Rp ') => {
+                    if (!value) return '';
+                    let number_string = value.toString().replace(/[^,\d]/g, '');
+                    let split = number_string.split(',');
+                    let sisa = split[0].length % 3;
+                    let rupiah = split[0].substr(0, sisa);
+                    let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-                // Remove all non-digit characters
-                let number_string = value.toString().replace(/[^,\d]/g, '').toString();
+                    if (ribuan) {
+                        let separator = sisa ? '.' : '';
+                        rupiah += separator + ribuan.join('.');
+                    }
 
-                // Split by decimal point if any
-                let split = number_string.split(',');
-                let sisa = split[0].length % 3;
-                let rupiah = split[0].substr(0, sisa);
-                let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+                    rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+                    return rupiah ? prefix + rupiah : '';
+                },
 
-                // Add dots for thousand separators
-                if (ribuan) {
-                    let separator = sisa ? '.' : '';
-                    rupiah += separator + ribuan.join('.');
+                /**
+                 * Mengubah string format Rupiah kembali menjadi angka integer.
+                 * @param {string} value - String Rupiah (e.g., "Rp 1.000.000").
+                 * @returns {number} - Nilai numerik.
+                 */
+                parse: (value) => {
+                    return parseInt(String(value).replace(/[^0-9]/g, '')) || 0;
+                },
+
+                /**
+                 * Menerapkan event listener ke input field untuk format Rupiah otomatis.
+                 * @param {string} inputId - ID dari elemen input.
+                 */
+                setupInput: (inputId) => {
+                    const input = document.getElementById(inputId);
+                    if (input) {
+                        const formatValue = () => {
+                            const originalValue = input.value;
+                            const formattedValue = rupiahFormatter.format(originalValue);
+                            // Hanya update jika formatnya berubah untuk menghindari loop tak terbatas
+                            if (originalValue !== formattedValue.replace('Rp ', '')) {
+                                input.value = formattedValue.replace('Rp ', '');
+                            }
+                        };
+                        input.addEventListener('input', formatValue);
+                        input.addEventListener('blur', formatValue);
+                    }
                 }
+            };
 
-                // Combine with decimal part if any
-                rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+            /**
+             * @module modalController
+             * Mengelola semua fungsi untuk membuka dan menutup modal.
+             */
+            const modalController = {
+                /**
+                 * Mengontrol status modal dan body scroll.
+                 * @param {string} modalId - ID dari modal.
+                 * @param {boolean} show - Tampilkan (true) atau sembunyikan (false).
+                 */
+                toggle: (modalId, show) => {
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.classList.toggle('hidden', !show);
+                        document.body.classList.toggle('overflow-hidden', show);
+                    }
+                },
 
-                return prefix == undefined ? rupiah : (rupiah ? 'Rp ' + rupiah : '');
-            }
+                // --- Modal Celengan (Savings) ---
+                openSavings: (type, id = null, name = '', target = 0, target_date = '', description = '') => {
+                    const form = document.getElementById('savingsForm');
+                    const title = document.getElementById('modalTitle');
 
-            function parseRupiah(value) {
-                return parseInt(value.replace(/[^0-9]/g, '')) || 0;
-            }
+                    form.action = type === 'create' ? "{{ route('savings.store') }}" : `/savings/${id}`;
+                    form.querySelector('input[name="_method"]').value = type === 'create' ? 'POST' : 'PUT';
+                    title.textContent = type === 'create' ? 'Buat Celengan Baru' : 'Edit Celengan';
 
-            // Setup Rupiah input
-            function setupRupiahInput(inputId) {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    // Format on input
-                    input.addEventListener('input', function(e) {
-                        this.value = formatRupiah(this.value);
-                    });
-
-                    // Format on blur (in case user pastes value)
-                    input.addEventListener('blur', function(e) {
-                        this.value = formatRupiah(this.value);
-                    });
-                }
-            }
-
-            // Modal functions
-            function openModal(type, id = null, name = '', target = 0, target_date = '', description = '') {
-                const modal = document.getElementById('savingsModal');
-                const form = document.getElementById('savingsForm');
-                const methodInput = document.getElementById('formMethod');
-                const savingIdInput = document.getElementById('savingId');
-                const title = document.getElementById('modalTitle');
-
-                if (type === 'create') {
-                    title.textContent = 'Buat celengan Baru';
-                    form.action = "{{ route('savings.store') }}";
-                    methodInput.value = 'POST';
-                    savingIdInput.value = '';
-
-                    // Reset form
-                    document.getElementById('name').value = '';
-                    document.getElementById('target').value = '';
-                    document.getElementById('target_date').value = '';
-                    document.getElementById('description').value = '';
-                } else if (type === 'edit') {
-                    title.textContent = 'Edit celengan';
-                    form.action = `/savings/${id}`;
-                    methodInput.value = 'PUT';
-                    savingIdInput.value = id;
-
-                    // Fill form with existing data
+                    // Isi atau reset form
                     document.getElementById('name').value = name || '';
-                    document.getElementById('target').value = formatRupiah(target);
-                    document.getElementById('target_date').value = target_date;
+                    document.getElementById('target').value = target ? rupiahFormatter.format(target).replace('Rp ',
+                        '') : '';
+                    document.getElementById('target_date').value = target_date || '';
                     document.getElementById('description').value = description || '';
+
+                    modalController.toggle('savingsModal', true);
+                },
+                closeSavings: () => modalController.toggle('savingsModal', false),
+
+                // --- Modal Deposit ---
+                openDeposit: (savingId) => {
+                    document.getElementById('depositForm').action = `/savings/${savingId}/deposit`;
+                    modalController.toggle('depositModal', true);
+                },
+                closeDeposit: () => modalController.toggle('depositModal', false),
+
+                // --- Modal Withdraw ---
+                openWithdrawal: (savingId) => {
+                    document.getElementById('withdrawalForm').action = `/savings/${savingId}/withdraw`;
+                    modalController.toggle('withdrawalModal', true);
+                },
+                closeWithdrawal: () => modalController.toggle('withdrawalModal', false),
+            };
+
+            /**
+             * @module formController
+             * Menangani persiapan submit form yang memiliki input Rupiah.
+             */
+            const formController = {
+                /**
+                 * Menyiapkan form agar mengirim nilai numerik dari input Rupiah.
+                 * @param {string} formId - ID dari form.
+                 * @param {string} amountFieldId - ID dari input amount.
+                 */
+                setupSubmission: (formId, amountFieldId) => {
+                    const form = document.getElementById(formId);
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            const amountField = document.getElementById(amountFieldId);
+                            if (amountField) {
+                                amountField.value = rupiahFormatter.parse(amountField.value);
+                            }
+                        });
+                    }
                 }
+            };
 
-                modal.classList.remove('hidden');
-                document.body.classList.add('overflow-hidden');
-            }
+            /**
+             * Inisialisasi semua script setelah DOM dimuat.
+             */
+            document.addEventListener('DOMContentLoaded', () => {
+                // Setup input Rupiah
+                rupiahFormatter.setupInput('target');
+                rupiahFormatter.setupInput('amount');
+                rupiahFormatter.setupInput('withdrawal_amount');
 
-            function closeModal() {
-                document.getElementById('savingsModal').classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-            }
+                // Siapkan form untuk submit nilai numerik
+                formController.setupSubmission('savingsForm', 'target');
+                formController.setupSubmission('depositForm', 'amount');
+                formController.setupSubmission('withdrawalForm', 'withdrawal_amount');
 
-            function openDepositModal(savingId) {
-                const modal = document.getElementById('depositModal');
-                const form = document.getElementById('depositForm');
-
-                form.action = `/savings/${savingId}/deposit`;
-                modal.classList.remove('hidden');
-                document.body.classList.add('overflow-hidden');
-            }
-
-            function closeDepositModal() {
-                document.getElementById('depositModal').classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-            }
-
-            function openWithdrawalModal(savingId) {
-                const modal = document.getElementById('withdrawalModal');
-                const form = document.getElementById('withdrawalForm');
-
-                form.action = `/savings/${savingId}/withdraw`;
-                modal.classList.remove('hidden');
-                document.body.classList.add('overflow-hidden');
-            }
-
-            function closeWithdrawalModal() {
-                document.getElementById('withdrawalModal').classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-            }
-
-            // Form submission handling
-            function prepareFormSubmission(formId, amountFieldId) {
-                const form = document.getElementById(formId);
-                const amountField = document.getElementById(amountFieldId);
-
-                if (form && amountField) {
-                    form.addEventListener('submit', function(e) {
-                        // Convert Rupiah formatted value back to number
-                        const numericValue = parseRupiah(amountField.value);
-
-                        // Create a hidden input with the numeric value
-                        const hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = amountField.name;
-                        hiddenInput.value = numericValue;
-
-                        // Replace the formatted input with numeric value
-                        form.appendChild(hiddenInput);
-                        amountField.name = '';
-                    });
-                }
-            }
-
-            // Initialize when DOM is loaded
-            document.addEventListener('DOMContentLoaded', function() {
-                // Setup Rupiah inputs
-                setupRupiahInput('target');
-                setupRupiahInput('amount');
-                setupRupiahInput('withdrawal_amount');
-
-                // Prepare form submissions
-                prepareFormSubmission('savingsForm', 'target');
-                prepareFormSubmission('depositForm', 'amount');
-                prepareFormSubmission('withdrawalForm', 'withdrawal_amount');
+                // Expose modal functions to be callable from HTML (onclick)
+                window.openModal = modalController.openSavings;
+                window.closeModal = modalController.closeSavings;
+                window.openDepositModal = modalController.openDeposit;
+                window.closeDepositModal = modalController.closeDeposit;
+                window.openWithdrawalModal = modalController.openWithdrawal;
+                window.closeWithdrawalModal = modalController.closeWithdrawal;
             });
         </script>
     @endpush

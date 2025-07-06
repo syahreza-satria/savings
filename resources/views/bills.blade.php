@@ -24,15 +24,13 @@
         </div>
     </div>
 
-    <div class="mb-8">
-        <section
-            class="p-4 bg-white border border-gray-100 rounded-lg shadow dark:border-gray-700 dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
-            <h2 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">Perbandingan Hutang</h2>
-            <div class="flex justify-center h-64">
-                <canvas id="billsChart"></canvas>
-            </div>
-        </section>
-    </div>
+    <section
+        class="p-4 bg-white border border-gray-100 rounded-lg shadow dark:border-gray-700 dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900">
+        <h2 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">Perbandingan Hutang</h2>
+        <div class="flex justify-center h-64">
+            <canvas id="billsChart"></canvas>
+        </div>
+    </section>
 
     <div class="mb-8 space-y-6 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
         <div class="space-y-3">
@@ -45,7 +43,8 @@
                             Daftar Hutang
                         </h1>
                         <p class="text-xs font-light dark:text-gray-400">Total: Rp
-                            {{ number_format($bills->sum('amount'), '0', ',', '.') }}</p>
+                            {{ number_format($bills->sum('amount'), '0', ',', '.') }}
+                        </p>
                     </div>
                     <button type="button" onclick="openModal('store')"
                         class="flex items-center gap-1 rounded-md bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">
@@ -70,7 +69,8 @@
                                         Lunas</span>
                                 </div>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    {{ $bill->created_at->format('d M Y') }}</p>
+                                    {{ \Carbon\Carbon::parse($bill->date)->translatedFormat('d F Y') }}
+                                </p>
                                 @if ($bill->description)
                                     <p class="mt-1 text-xs text-gray-600 line-clamp-2 dark:text-gray-300">
                                         {{ $bill->description }}</p>
@@ -253,6 +253,12 @@
                             <input type="text" id="store_description" name="description"
                                 class="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-200 dark:placeholder-gray-400 sm:text-sm">
                         </div>
+                        <div>
+                            <label for="store_date"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tanggal</label>
+                            <input type="date" id="store_date" name="date"
+                                class="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-200 dark:placeholder-gray-400 sm:text-sm">
+                        </div>
                     </div>
                     <div class="flex justify-end mt-6 space-x-3">
                         <button type="button" onclick="closeModal()"
@@ -350,8 +356,10 @@
 
                 // Variabel untuk warna dinamis berdasarkan dark mode
                 const isDarkMode = document.documentElement.classList.contains('dark');
-                const textColor = isDarkMode ? '#e5e7eb' : '#374151'; // Warna teks (putih keabu-abuan / abu-abu tua)
-                const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'; // Warna garis grid
+                const textColor = isDarkMode ? '#e5e7eb' : '#374151';
+                const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const tooltipBgColor = isDarkMode ? '#111827' : '#1F2937';
+                const tooltipTextColor = isDarkMode ? '#F3F4F6' : '#F9FAFB';
 
                 new Chart(ctx, {
                     type: 'line',
@@ -361,16 +369,16 @@
                             label: 'Sudah Lunas',
                             data: dataLunasBulanan,
                             borderColor: 'rgba(34, 197, 94, 1)',
-                            backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                            fill: false,
-                            tension: 0.1
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.3
                         }, {
                             label: 'Belum Lunas',
                             data: dataBelumLunasBulanan,
                             borderColor: 'rgba(239, 68, 68, 1)',
-                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                            fill: false,
-                            tension: 0.1
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.3
                         }]
                     },
                     options: {
@@ -378,40 +386,64 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'top',
+                                position: 'bottom',
                                 labels: {
-                                    color: textColor // Menggunakan variabel warna
+                                    color: textColor,
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: {
+                                        family: "'Inter', sans-serif"
+                                    }
                                 }
                             },
                             tooltip: {
-                                mode: 'index',
-                                intersect: false,
+                                backgroundColor: tooltipBgColor,
+                                titleColor: tooltipTextColor,
+                                bodyColor: tooltipTextColor,
+                                titleFont: {
+                                    family: "'Inter', sans-serif",
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    family: "'Inter', sans-serif",
+                                    size: 12
+                                }
                             },
                         },
-                        // Perubahan utama ada di sini
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    color: textColor // Warna angka pada sumbu Y
+                                    color: textColor,
+                                    font: {
+                                        family: "'Inter', sans-serif"
+                                    }
                                 },
                                 grid: {
-                                    color: gridColor // Warna garis grid pada sumbu Y
+                                    color: gridColor,
+                                    drawBorder: false
                                 }
                             },
                             x: {
                                 ticks: {
-                                    color: textColor // Warna label pada sumbu X (misal: Jan, Feb)
+                                    color: textColor,
+                                    font: {
+                                        family: "'Inter', sans-serif"
+                                    }
                                 },
                                 grid: {
-                                    color: gridColor // Warna garis grid pada sumbu X
+                                    display: false,
+                                    drawBorder: false
                                 }
                             }
                         }
                     }
                 });
             });
-
 
             // Fungsi untuk membuka modal
             function openModal(type, id = null, item = null, amount = null, description = null, is_paid = null) {

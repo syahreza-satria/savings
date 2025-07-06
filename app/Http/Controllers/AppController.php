@@ -14,12 +14,62 @@ use Illuminate\Support\Facades\Storage;
 
 class AppController extends Controller
 {
+
+// ... di dalam class Controller Anda
+
     public function index()
     {
         $userId = auth()->id();
-        $bills = Bill::where('user_id', $userId)->where('is_paid', false)->orderBy('id', 'desc')->take(5)->get();
-        $savings = Saving::where('user_id', $userId)->where('status', false)->orderBy('id', 'desc')->paginate(3);
-        return view('index', compact('bills', 'savings'));
+
+        // Data untuk daftar "Recent Activity" (tetap sama)
+        $bills = Bill::where('user_id', $userId)->latest()->take(5)->get();
+        $savings = Saving::where('user_id', $userId)->latest()->get(); // ambil semua untuk kalkulasi
+        $recentSavings = $savings->take(3); // variabel baru untuk daftar
+
+        // --- Persiapan Data Untuk Grafik Hutang ---
+        $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
+
+        $paidData = Bill::where('user_id', $userId)
+            ->where('is_paid', true)
+            ->where('date', '>=', $sixMonthsAgo)
+            ->select(DB::raw('SUM(amount) as total'), DB::raw("DATE_FORMAT(date, '%b') as month"))
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $activeData = Bill::where('user_id', $userId)
+            ->where('is_paid', false)
+            ->where('date', '>=', $sixMonthsAgo)
+            ->select(DB::raw('SUM(amount) as total'), DB::raw("DATE_FORMAT(date, '%b') as month"))
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $labels = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $labels[] = Carbon::now()->subMonths($i)->format('M');
+        }
+
+        $debtChartData = [
+            'labels' => $labels,
+            'paid' => array_map(fn($month) => $paidData[$month] ?? 0, $labels),
+            'active' => array_map(fn($month) => $activeData[$month] ?? 0, $labels),
+        ];
+
+
+        // --- Persiapan Data Untuk Grafik Tabungan ---
+        // Kita hanya perlu mengirim koleksi tabungan yang relevan (misal, yang belum selesai)
+        $savingsChartData = Saving::where('user_id', $userId)
+            ->where('status', false)
+            ->orderBy('id', 'desc')
+            ->get(['name', 'saving', 'target']);
+
+
+        return view('index', [
+            'bills' => $bills,
+            'recentSavings' => $recentSavings, // Gunakan ini untuk daftar
+            'savings' => $savings, // Kirim semua untuk kalkulasi total di atas
+            'debtChartData' => $debtChartData,
+            'savingsChartData' => $savingsChartData,
+        ]);
     }
 
     public function getChartData()
@@ -142,6 +192,7 @@ class AppController extends Controller
             'item' => 'required|string|max:255',
             'amount' => 'required|string',
             'description' => 'nullable|string|max:500',
+            'date' => 'required|date',
         ]);
 
         $numericAmount = (int) preg_replace('/[^0-9]/', '', $validated['amount']);
@@ -152,6 +203,7 @@ class AppController extends Controller
         $bill->item = $validated['item'];
         $bill->amount = $numericAmount;
         $bill->description = $validated['description'];
+        $bill->date = $validated['date'];
         $bill->is_paid = false;
         $bill->save();
 

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="p-6 mb-8 bg-white rounded-lg shadow-sm dark:bg-gray-800 dark:border dark:border-gray-700">
+    <div class="p-6 mb-8 bg-white rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <!-- Header Section -->
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-indigo-600 dark:text-indigo-400">Profile Information</h1>

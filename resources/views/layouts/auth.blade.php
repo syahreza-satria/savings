@@ -9,7 +9,7 @@
     @vite('resources/css/app.css')
 </head>
 
-<body class="max-h-screen p-8 lg:p-0 font-primary">
+<body class="h-screen max-h-screen p-8 lg:p-0 font-primary">
     @yield('content')
 
     <script>
@@ -29,7 +29,6 @@
             }
         }
     </script>
-
 </body>
 
 </html>
