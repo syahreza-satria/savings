@@ -347,34 +347,50 @@
         <script>
             // Chart.js script
             document.addEventListener('DOMContentLoaded', function() {
+                // --- 1. FUNGSI UNTUK MENGUPDATE WARNA GRAFIK ---
+                // Fungsi ini akan dipanggil setiap kali dark mode berubah.
+                function updateChartColors(chart, isDark) {
+                    const textColor = isDark ? '#e5e7eb' : '#374151';
+                    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                    const tooltipBgColor = isDark ? '#111827' : '#1F2937';
+                    const tooltipTextColor = isDark ? '#F3F4F6' : '#F9FAFB';
+
+                    // Update warna pada semua elemen grafik
+                    const options = chart.options;
+                    options.plugins.legend.labels.color = textColor;
+                    options.plugins.tooltip.backgroundColor = tooltipBgColor;
+                    options.plugins.tooltip.titleColor = tooltipTextColor;
+                    options.plugins.tooltip.bodyColor = tooltipTextColor;
+
+                    options.scales.y.ticks.color = textColor;
+                    options.scales.y.grid.color = gridColor;
+                    options.scales.x.ticks.color = textColor;
+                    options.scales.x.grid.color = gridColor; // Meskipun disembunyikan, ini praktik yang baik
+
+                    // Terapkan perubahan pada grafik
+                    chart.update();
+                }
+
+
+                // --- 2. INISIALISASI GRAFIK ---
+                // Kita buat grafik seperti biasa, namun menyimpannya dalam sebuah variabel.
                 const ctx = document.getElementById('billsChart').getContext('2d');
+                const initialIsDark = document.documentElement.classList.contains('dark');
 
-                // Mengambil data dinamis yang dikirim dari controller
-                const labels = @json($chartLabels);
-                const dataLunasBulanan = @json($chartPaidData);
-                const dataBelumLunasBulanan = @json($chartUnpaidData);
-
-                // Variabel untuk warna dinamis berdasarkan dark mode
-                const isDarkMode = document.documentElement.classList.contains('dark');
-                const textColor = isDarkMode ? '#e5e7eb' : '#374151';
-                const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-                const tooltipBgColor = isDarkMode ? '#111827' : '#1F2937';
-                const tooltipTextColor = isDarkMode ? '#F3F4F6' : '#F9FAFB';
-
-                new Chart(ctx, {
+                const billsChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
+                        labels: @json($chartLabels),
                         datasets: [{
                             label: 'Sudah Lunas',
-                            data: dataLunasBulanan,
+                            data: @json($chartPaidData),
                             borderColor: 'rgba(34, 197, 94, 1)',
                             backgroundColor: 'rgba(34, 197, 94, 0.1)',
                             fill: true,
                             tension: 0.3
                         }, {
                             label: 'Belum Lunas',
-                            data: dataBelumLunasBulanan,
+                            data: @json($chartUnpaidData),
                             borderColor: 'rgba(239, 68, 68, 1)',
                             backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             fill: true,
@@ -388,7 +404,7 @@
                             legend: {
                                 position: 'bottom',
                                 labels: {
-                                    color: textColor,
+                                    color: initialIsDark ? '#e5e7eb' : '#374151', // Warna awal
                                     usePointStyle: true,
                                     padding: 20,
                                     font: {
@@ -397,9 +413,9 @@
                                 }
                             },
                             tooltip: {
-                                backgroundColor: tooltipBgColor,
-                                titleColor: tooltipTextColor,
-                                bodyColor: tooltipTextColor,
+                                backgroundColor: initialIsDark ? '#111827' : '#1F2937', // Warna awal
+                                titleColor: initialIsDark ? '#F3F4F6' : '#F9FAFB',
+                                bodyColor: initialIsDark ? '#F3F4F6' : '#F9FAFB',
                                 titleFont: {
                                     family: "'Inter', sans-serif",
                                     size: 14
@@ -418,19 +434,20 @@
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    color: textColor,
+                                    color: initialIsDark ? '#e5e7eb' : '#374151', // Warna awal
                                     font: {
                                         family: "'Inter', sans-serif"
                                     }
                                 },
                                 grid: {
-                                    color: gridColor,
+                                    color: initialIsDark ? 'rgba(255, 255, 255, 0.1)' :
+                                    'rgba(0, 0, 0, 0.1)', // Warna awal
                                     drawBorder: false
                                 }
                             },
                             x: {
                                 ticks: {
-                                    color: textColor,
+                                    color: initialIsDark ? '#e5e7eb' : '#374151', // Warna awal
                                     font: {
                                         family: "'Inter', sans-serif"
                                     }
@@ -443,7 +460,25 @@
                         }
                     }
                 });
+
+
+                // --- 3. LISTENER UNTUK PERUBAHAN DARK MODE ---
+                // Menggunakan MutationObserver untuk mengawasi perubahan class pada <html>
+                const themeObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.attributeName === 'class') {
+                            const isNowDark = document.documentElement.classList.contains('dark');
+                            updateChartColors(billsChart, isNowDark);
+                        }
+                    });
+                });
+
+                // Mulai mengamati elemen <html> untuk perubahan pada atribut 'class'
+                themeObserver.observe(document.documentElement, {
+                    attributes: true
+                });
             });
+
 
             // Fungsi untuk membuka modal
             function openModal(type, id = null, item = null, amount = null, description = null, is_paid = null) {
