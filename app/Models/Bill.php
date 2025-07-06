@@ -13,6 +13,7 @@ class Bill extends Model
         'item',
         'amount',
         'description',
+        'date',
         'is_paid',
     ];
 

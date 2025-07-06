@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('item');
             $table->integer('amount');
             $table->text('description')->nullable();
+            $table->date('date');
             $table->boolean('is_paid')->default(false);
             $table->timestamps();
         });
