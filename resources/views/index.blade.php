@@ -320,243 +320,244 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Fungsi untuk mengupdate warna chart berdasarkan dark mode
-            const updateChartColors = (chart, isDark) => {
-                const bgColor = isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)';
-                const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
-                const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Fungsi untuk mengupdate warna chart berdasarkan dark mode
+                const updateChartColors = (chart, isDark) => {
+                    const bgColor = isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+                    const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
+                    const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
 
-                if (chart.options.plugins.legend) {
-                    chart.options.plugins.legend.labels.color = textColor;
-                }
-
-                if (chart.options.scales) {
-                    if (chart.options.scales.x) {
-                        chart.options.scales.x.grid.color = gridColor;
-                        chart.options.scales.x.ticks.color = textColor;
+                    if (chart.options.plugins.legend) {
+                        chart.options.plugins.legend.labels.color = textColor;
                     }
-                    if (chart.options.scales.y) {
-                        chart.options.scales.y.grid.color = gridColor;
-                        chart.options.scales.y.ticks.color = textColor;
+
+                    if (chart.options.scales) {
+                        if (chart.options.scales.x) {
+                            chart.options.scales.x.grid.color = gridColor;
+                            chart.options.scales.x.ticks.color = textColor;
+                        }
+                        if (chart.options.scales.y) {
+                            chart.options.scales.y.grid.color = gridColor;
+                            chart.options.scales.y.ticks.color = textColor;
+                        }
                     }
-                }
 
-                chart.update();
-            };
+                    chart.update();
+                };
 
-            // Ambil data dari API
-            fetch('/chart-data')
-                .then(response => response.json())
-                .then(data => {
-                    const debtChart = renderDebtChart(data.debt);
-                    const savingsChart = renderSavingsChart(data.savings);
+                // Ambil data dari API
+                fetch('/chart-data')
+                    .then(response => response.json())
+                    .then(data => {
+                        const debtChart = renderDebtChart(data.debt);
+                        const savingsChart = renderSavingsChart(data.savings);
 
-                    // Listen untuk perubahan dark mode
-                    Alpine.effect(() => {
-                        const isDark = Alpine.store('darkMode').on;
-                        if (debtChart) updateChartColors(debtChart, isDark);
-                        if (savingsChart) updateChartColors(savingsChart, isDark);
+                        // Listen untuk perubahan dark mode
+                        Alpine.effect(() => {
+                            const isDark = Alpine.store('darkMode').on;
+                            if (debtChart) updateChartColors(debtChart, isDark);
+                            if (savingsChart) updateChartColors(savingsChart, isDark);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching chart data:', error));
+
+                function renderDebtChart(debtData) {
+                    const debtTrendCtx = document.getElementById('debtTrendChart').getContext('2d');
+                    const isDark = Alpine.store('darkMode').on;
+                    const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
+                    const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
+
+                    return new Chart(debtTrendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: debtData.labels,
+                            datasets: [{
+                                label: 'Hutang Aktif',
+                                data: debtData.active,
+                                borderColor: 'rgba(79, 70, 229, 1)',
+                                backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' :
+                                    'rgba(79, 70, 229, 0.05)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true
+                            }, {
+                                label: 'Hutang Lunas',
+                                data: debtData.paid,
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' :
+                                    'rgba(16, 185, 129, 0.05)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 20,
+                                        color: textColor,
+                                        font: {
+                                            family: "'Inter', sans-serif"
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#111827' : '#1F2937',
+                                    titleColor: isDark ? '#F3F4F6' : '#F9FAFB',
+                                    bodyColor: isDark ? '#E5E7EB' : '#F3F4F6',
+                                    titleFont: {
+                                        family: "'Inter', sans-serif",
+                                        size: 14
+                                    },
+                                    bodyFont: {
+                                        family: "'Inter', sans-serif",
+                                        size: 12
+                                    },
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.dataset.label + ': Rp' + context.raw
+                                                .toLocaleString('id-ID');
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: gridColor,
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return 'Rp' + value.toLocaleString('id-ID');
+                                        },
+                                        color: textColor,
+                                        font: {
+                                            family: "'Inter', sans-serif"
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: gridColor,
+                                        display: false,
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: textColor,
+                                        font: {
+                                            family: "'Inter', sans-serif"
+                                        }
+                                    }
+                                }
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            }
+                        }
                     });
-                })
-                .catch(error => console.error('Error fetching chart data:', error));
+                }
 
-            function renderDebtChart(debtData) {
-                const debtTrendCtx = document.getElementById('debtTrendChart').getContext('2d');
-                const isDark = Alpine.store('darkMode').on;
-                const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
-                const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
+                function renderSavingsChart(savings) {
+                    const savingsCtx = document.getElementById('savingsChart').getContext('2d');
+                    const isDark = Alpine.store('darkMode').on;
+                    const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
+                    const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
 
-                return new Chart(debtTrendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: debtData.labels,
-                        datasets: [{
-                            label: 'Hutang Aktif',
-                            data: debtData.active,
-                            borderColor: 'rgba(79, 70, 229, 1)',
-                            backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' :
-                                'rgba(79, 70, 229, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true
-                        }, {
-                            label: 'Hutang Lunas',
-                            data: debtData.paid,
-                            borderColor: 'rgba(16, 185, 129, 1)',
-                            backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' :
-                                'rgba(16, 185, 129, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 20,
-                                    color: textColor,
-                                    font: {
-                                        family: "'Inter', sans-serif"
-                                    }
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: isDark ? '#111827' : '#1F2937',
-                                titleColor: isDark ? '#F3F4F6' : '#F9FAFB',
-                                bodyColor: isDark ? '#E5E7EB' : '#F3F4F6',
-                                titleFont: {
-                                    family: "'Inter', sans-serif",
-                                    size: 14
-                                },
-                                bodyFont: {
-                                    family: "'Inter', sans-serif",
-                                    size: 12
-                                },
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.dataset.label + ': Rp' + context.raw
-                                            .toLocaleString('id-ID');
-                                    }
-                                }
-                            }
+                    return new Chart(savingsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: savings.map(s => s.name),
+                            datasets: [{
+                                label: 'Progress',
+                                data: savings.map(s => {
+                                    return s.target > 0 ? Math.min(100, (s.saving / s.target) *
+                                        100) : 0;
+                                }),
+                                backgroundColor: isDark ? 'rgba(79, 70, 229, 0.7)' :
+                                    'rgba(79, 70, 229, 0.7)',
+                                borderColor: isDark ? 'rgba(79, 70, 229, 1)' : 'rgba(79, 70, 229, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: gridColor,
-                                    drawBorder: false
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
                                 },
-                                ticks: {
-                                    callback: function(value) {
-                                        return 'Rp' + value.toLocaleString('id-ID');
+                                tooltip: {
+                                    backgroundColor: isDark ? '#111827' : '#1F2937',
+                                    titleColor: isDark ? '#F3F4F6' : '#F9FAFB',
+                                    bodyColor: isDark ? '#E5E7EB' : '#F3F4F6',
+                                    titleFont: {
+                                        family: "'Inter', sans-serif",
+                                        size: 14
                                     },
-                                    color: textColor,
-                                    font: {
-                                        family: "'Inter', sans-serif"
-                                    }
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    color: gridColor,
-                                    display: false,
-                                    drawBorder: false
-                                },
-                                ticks: {
-                                    color: textColor,
-                                    font: {
-                                        family: "'Inter', sans-serif"
-                                    }
-                                }
-                            }
-                        },
-                        interaction: {
-                            intersect: false,
-                            mode: 'index'
-                        }
-                    }
-                });
-            }
-
-            function renderSavingsChart(savings) {
-                const savingsCtx = document.getElementById('savingsChart').getContext('2d');
-                const isDark = Alpine.store('darkMode').on;
-                const textColor = isDark ? 'rgba(229, 231, 235, 0.8)' : 'rgba(55, 65, 81, 0.8)';
-                const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(229, 231, 235, 0.5)';
-
-                return new Chart(savingsCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: savings.map(s => s.name),
-                        datasets: [{
-                            label: 'Progress',
-                            data: savings.map(s => {
-                                return s.target > 0 ? Math.min(100, (s.saving / s.target) *
-                                    100) : 0;
-                            }),
-                            backgroundColor: isDark ? 'rgba(79, 70, 229, 0.7)' :
-                                'rgba(79, 70, 229, 0.7)',
-                            borderColor: isDark ? 'rgba(79, 70, 229, 1)' : 'rgba(79, 70, 229, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                backgroundColor: isDark ? '#111827' : '#1F2937',
-                                titleColor: isDark ? '#F3F4F6' : '#F9FAFB',
-                                bodyColor: isDark ? '#E5E7EB' : '#F3F4F6',
-                                titleFont: {
-                                    family: "'Inter', sans-serif",
-                                    size: 14
-                                },
-                                bodyFont: {
-                                    family: "'Inter', sans-serif",
-                                    size: 12
-                                },
-                                callbacks: {
-                                    label: function(context) {
-                                        const saving = savings[context.dataIndex];
-                                        return [
-                                            `Terkumpul: Rp${saving.saving.toLocaleString('id-ID')}`,
-                                            `Target: Rp${saving.target.toLocaleString('id-ID')}`,
-                                            `Progress: ${context.raw}%`
-                                        ];
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                max: 100,
-                                grid: {
-                                    color: gridColor,
-                                    drawBorder: false
-                                },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
+                                    bodyFont: {
+                                        family: "'Inter', sans-serif",
+                                        size: 12
                                     },
-                                    color: textColor,
-                                    font: {
-                                        family: "'Inter', sans-serif"
+                                    callbacks: {
+                                        label: function(context) {
+                                            const saving = savings[context.dataIndex];
+                                            return [
+                                                `Terkumpul: Rp${saving.saving.toLocaleString('id-ID')}`,
+                                                `Target: Rp${saving.target.toLocaleString('id-ID')}`,
+                                                `Progress: ${context.raw}%`
+                                            ];
+                                        }
                                     }
                                 }
                             },
-                            y: {
-                                grid: {
-                                    color: gridColor,
-                                    display: false,
-                                    drawBorder: false
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        color: gridColor,
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        },
+                                        color: textColor,
+                                        font: {
+                                            family: "'Inter', sans-serif"
+                                        }
+                                    }
                                 },
-                                ticks: {
-                                    color: textColor,
-                                    font: {
-                                        family: "'Inter', sans-serif"
+                                y: {
+                                    grid: {
+                                        color: gridColor,
+                                        display: false,
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: textColor,
+                                        font: {
+                                            family: "'Inter', sans-serif"
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                });
-            }
-        });
-    </script>
+                    });
+                }
+            });
+        </script>
+    @endpush
 @endsection

@@ -226,50 +226,52 @@
         </div>
     </div>
 
-    <script>
-        function confirmDelete() {
-            const modal = document.getElementById('deleteModal');
-            const backdrop = document.getElementById('modalBackdrop');
-            const content = document.getElementById('modalContent');
+    @push('scripts')
+        <script>
+            function confirmDelete() {
+                const modal = document.getElementById('deleteModal');
+                const backdrop = document.getElementById('modalBackdrop');
+                const content = document.getElementById('modalContent');
 
-            // Show modal
-            modal.classList.remove('hidden');
+                // Show modal
+                modal.classList.remove('hidden');
 
-            // Trigger reflow to enable animations
-            void modal.offsetWidth;
+                // Trigger reflow to enable animations
+                void modal.offsetWidth;
 
-            // Animate backdrop and content
-            backdrop.classList.remove('opacity-0');
-            backdrop.classList.add('opacity-75');
+                // Animate backdrop and content
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-75');
 
-            content.classList.remove('opacity-0', 'translate-y-4', 'sm:scale-95');
-            content.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100');
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('deleteModal');
-            const backdrop = document.getElementById('modalBackdrop');
-            const content = document.getElementById('modalContent');
-
-            // Animate out
-            backdrop.classList.remove('opacity-75');
-            backdrop.classList.add('opacity-0');
-
-            content.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
-            content.classList.add('opacity-0', 'translate-y-4', 'sm:scale-95');
-
-            // Hide modal after animation completes
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300); // Match this with your CSS transition duration
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('deleteModal');
-            if (event.target === modal) {
-                closeModal();
+                content.classList.remove('opacity-0', 'translate-y-4', 'sm:scale-95');
+                content.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100');
             }
-        }
-    </script>
+
+            function closeModal() {
+                const modal = document.getElementById('deleteModal');
+                const backdrop = document.getElementById('modalBackdrop');
+                const content = document.getElementById('modalContent');
+
+                // Animate out
+                backdrop.classList.remove('opacity-75');
+                backdrop.classList.add('opacity-0');
+
+                content.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
+                content.classList.add('opacity-0', 'translate-y-4', 'sm:scale-95');
+
+                // Hide modal after animation completes
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300); // Match this with your CSS transition duration
+            }
+
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                const modal = document.getElementById('deleteModal');
+                if (event.target === modal) {
+                    closeModal();
+                }
+            }
+        </script>
+    @endpush
 @endsection

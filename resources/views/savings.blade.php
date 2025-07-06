@@ -459,247 +459,157 @@
         </div>
     </div>
 
-    <script>
-        // Format Rupiah functions
-        function formatRupiah(value, prefix = '') {
-            if (!value) return '';
+    @push('scripts')
+        <script>
+            // Format Rupiah functions
+            function formatRupiah(value, prefix = '') {
+                if (!value) return '';
 
-            // Remove all non-digit characters
-            let number_string = value.toString().replace(/[^,\d]/g, '').toString();
+                // Remove all non-digit characters
+                let number_string = value.toString().replace(/[^,\d]/g, '').toString();
 
-            // Split by decimal point if any
-            let split = number_string.split(',');
-            let sisa = split[0].length % 3;
-            let rupiah = split[0].substr(0, sisa);
-            let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+                // Split by decimal point if any
+                let split = number_string.split(',');
+                let sisa = split[0].length % 3;
+                let rupiah = split[0].substr(0, sisa);
+                let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-            // Add dots for thousand separators
-            if (ribuan) {
-                let separator = sisa ? '.' : '';
-                rupiah += separator + ribuan.join('.');
+                // Add dots for thousand separators
+                if (ribuan) {
+                    let separator = sisa ? '.' : '';
+                    rupiah += separator + ribuan.join('.');
+                }
+
+                // Combine with decimal part if any
+                rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+
+                return prefix == undefined ? rupiah : (rupiah ? 'Rp ' + rupiah : '');
             }
 
-            // Combine with decimal part if any
-            rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-
-            return prefix == undefined ? rupiah : (rupiah ? 'Rp ' + rupiah : '');
-        }
-
-        function parseRupiah(value) {
-            return parseInt(value.replace(/[^0-9]/g, '')) || 0;
-        }
-
-        // Setup Rupiah input
-        function setupRupiahInput(inputId) {
-            const input = document.getElementById(inputId);
-            if (input) {
-                // Format on input
-                input.addEventListener('input', function(e) {
-                    this.value = formatRupiah(this.value);
-                });
-
-                // Format on blur (in case user pastes value)
-                input.addEventListener('blur', function(e) {
-                    this.value = formatRupiah(this.value);
-                });
-            }
-        }
-
-        // Modal functions
-        function openModal(type, id = null, name = '', target = 0, target_date = '', description = '') {
-            const modal = document.getElementById('savingsModal');
-            const form = document.getElementById('savingsForm');
-            const methodInput = document.getElementById('formMethod');
-            const savingIdInput = document.getElementById('savingId');
-            const title = document.getElementById('modalTitle');
-
-            if (type === 'create') {
-                title.textContent = 'Buat celengan Baru';
-                form.action = "{{ route('savings.store') }}";
-                methodInput.value = 'POST';
-                savingIdInput.value = '';
-
-                // Reset form
-                document.getElementById('name').value = '';
-                document.getElementById('target').value = '';
-                document.getElementById('target_date').value = '';
-                document.getElementById('description').value = '';
-            } else if (type === 'edit') {
-                title.textContent = 'Edit celengan';
-                form.action = `/savings/${id}`;
-                methodInput.value = 'PUT';
-                savingIdInput.value = id;
-
-                // Fill form with existing data
-                document.getElementById('name').value = name || '';
-                document.getElementById('target').value = formatRupiah(target);
-                document.getElementById('target_date').value = target_date;
-                document.getElementById('description').value = description || '';
+            function parseRupiah(value) {
+                return parseInt(value.replace(/[^0-9]/g, '')) || 0;
             }
 
-            modal.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-        }
+            // Setup Rupiah input
+            function setupRupiahInput(inputId) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Format on input
+                    input.addEventListener('input', function(e) {
+                        this.value = formatRupiah(this.value);
+                    });
 
-        function closeModal() {
-            document.getElementById('savingsModal').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }
-
-        function openDepositModal(savingId) {
-            const modal = document.getElementById('depositModal');
-            const form = document.getElementById('depositForm');
-
-            form.action = `/savings/${savingId}/deposit`;
-            modal.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-        }
-
-        function closeDepositModal() {
-            document.getElementById('depositModal').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }
-
-        function openWithdrawalModal(savingId) {
-            const modal = document.getElementById('withdrawalModal');
-            const form = document.getElementById('withdrawalForm');
-
-            form.action = `/savings/${savingId}/withdraw`;
-            modal.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-        }
-
-        function closeWithdrawalModal() {
-            document.getElementById('withdrawalModal').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }
-
-        // Form submission handling
-        function prepareFormSubmission(formId, amountFieldId) {
-            const form = document.getElementById(formId);
-            const amountField = document.getElementById(amountFieldId);
-
-            if (form && amountField) {
-                form.addEventListener('submit', function(e) {
-                    // Convert Rupiah formatted value back to number
-                    const numericValue = parseRupiah(amountField.value);
-
-                    // Create a hidden input with the numeric value
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = amountField.name;
-                    hiddenInput.value = numericValue;
-
-                    // Replace the formatted input with numeric value
-                    form.appendChild(hiddenInput);
-                    amountField.name = '';
-                });
-            }
-        }
-
-        // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Setup Rupiah inputs
-            setupRupiahInput('target');
-            setupRupiahInput('amount');
-            setupRupiahInput('withdrawal_amount');
-
-            // Prepare form submissions
-            prepareFormSubmission('savingsForm', 'target');
-            prepareFormSubmission('depositForm', 'amount');
-            prepareFormSubmission('withdrawalForm', 'withdrawal_amount');
-        });
-    </script>
-
-    <style>
-        /* Animation for the progress bar */
-        @keyframes gentlePulse {
-
-            0%,
-            100% {
-                opacity: 1;
+                    // Format on blur (in case user pastes value)
+                    input.addEventListener('blur', function(e) {
+                        this.value = formatRupiah(this.value);
+                    });
+                }
             }
 
-            50% {
-                opacity: 0.8;
-            }
-        }
+            // Modal functions
+            function openModal(type, id = null, name = '', target = 0, target_date = '', description = '') {
+                const modal = document.getElementById('savingsModal');
+                const form = document.getElementById('savingsForm');
+                const methodInput = document.getElementById('formMethod');
+                const savingIdInput = document.getElementById('savingId');
+                const title = document.getElementById('modalTitle');
 
-        .animate-gentle-pulse {
-            animation: gentlePulse 2s ease-in-out infinite;
-        }
+                if (type === 'create') {
+                    title.textContent = 'Buat celengan Baru';
+                    form.action = "{{ route('savings.store') }}";
+                    methodInput.value = 'POST';
+                    savingIdInput.value = '';
 
-        /* Typing animation for congrats message */
-        @keyframes typing {
-            from {
-                width: 0
-            }
+                    // Reset form
+                    document.getElementById('name').value = '';
+                    document.getElementById('target').value = '';
+                    document.getElementById('target_date').value = '';
+                    document.getElementById('description').value = '';
+                } else if (type === 'edit') {
+                    title.textContent = 'Edit celengan';
+                    form.action = `/savings/${id}`;
+                    methodInput.value = 'PUT';
+                    savingIdInput.value = id;
 
-            to {
-                width: 100%
-            }
-        }
+                    // Fill form with existing data
+                    document.getElementById('name').value = name || '';
+                    document.getElementById('target').value = formatRupiah(target);
+                    document.getElementById('target_date').value = target_date;
+                    document.getElementById('description').value = description || '';
+                }
 
-        .animate-typing {
-            overflow: hidden;
-            white-space: nowrap;
-            animation: typing 1.5s steps(40, end);
-        }
-
-        /* Sparkle animation */
-        @keyframes sparkle {
-            0% {
-                transform: scale(0.5);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1);
-                opacity: 1;
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
             }
 
-            100% {
-                transform: scale(0.5);
-                opacity: 0;
-            }
-        }
-
-        .animate-sparkle {
-            animation: sparkle 1.5s infinite;
-        }
-
-        /* Bounce spin animation for star */
-        @keyframes spinBounce {
-            0% {
-                transform: rotate(0deg) scale(1);
+            function closeModal() {
+                document.getElementById('savingsModal').classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
             }
 
-            50% {
-                transform: rotate(180deg) scale(1.2);
+            function openDepositModal(savingId) {
+                const modal = document.getElementById('depositModal');
+                const form = document.getElementById('depositForm');
+
+                form.action = `/savings/${savingId}/deposit`;
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
             }
 
-            100% {
-                transform: rotate(360deg) scale(1);
-            }
-        }
-
-        .animate-spin-bounce {
-            animation: spinBounce 1.5s ease-in-out infinite;
-        }
-
-        /* Confetti fall animation */
-        @keyframes confettiFall {
-            0% {
-                transform: translateY(-100vh) rotate(var(--random-rotation)) scale(var(--random-scale));
+            function closeDepositModal() {
+                document.getElementById('depositModal').classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
             }
 
-            100% {
-                transform: translateY(100vh) rotate(calc(var(--random-rotation) * 5)) translateX(var(--random-x)) scale(var(--random-scale));
-            }
-        }
+            function openWithdrawalModal(savingId) {
+                const modal = document.getElementById('withdrawalModal');
+                const form = document.getElementById('withdrawalForm');
 
-        .animate-confetti-fall {
-            animation: confettiFall 3s linear forwards;
-        }
-    </style>
+                form.action = `/savings/${savingId}/withdraw`;
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            function closeWithdrawalModal() {
+                document.getElementById('withdrawalModal').classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+
+            // Form submission handling
+            function prepareFormSubmission(formId, amountFieldId) {
+                const form = document.getElementById(formId);
+                const amountField = document.getElementById(amountFieldId);
+
+                if (form && amountField) {
+                    form.addEventListener('submit', function(e) {
+                        // Convert Rupiah formatted value back to number
+                        const numericValue = parseRupiah(amountField.value);
+
+                        // Create a hidden input with the numeric value
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = amountField.name;
+                        hiddenInput.value = numericValue;
+
+                        // Replace the formatted input with numeric value
+                        form.appendChild(hiddenInput);
+                        amountField.name = '';
+                    });
+                }
+            }
+
+            // Initialize when DOM is loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                // Setup Rupiah inputs
+                setupRupiahInput('target');
+                setupRupiahInput('amount');
+                setupRupiahInput('withdrawal_amount');
+
+                // Prepare form submissions
+                prepareFormSubmission('savingsForm', 'target');
+                prepareFormSubmission('depositForm', 'amount');
+                prepareFormSubmission('withdrawalForm', 'withdrawal_amount');
+            });
+        </script>
+    @endpush
 @endsection
